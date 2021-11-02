@@ -32,7 +32,11 @@ protected:
 };
 
 int main()
-{
-    std::cout << "Hello World!\n";
+{  
+    // use olcConsoleGameEngine derived app
+    Hotkeys_Asteroids game;
+    game.ConstructConsole(160, 100, 8, 8);
+    game.Start();
+    return 0;
 }
 
