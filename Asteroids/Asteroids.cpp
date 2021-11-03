@@ -25,9 +25,11 @@ private:
     };
 
     vector<SpaceObject> vecAsteroids;
+    vector<SpaceObject> vecBullets;
     SpaceObject player;
 
     vector<pair<float, float>> vecModelShip;
+    vector<pair<float, float>> vecModelAsteroids;
 
 protected:
     // called by olcConsoleGameEngine
@@ -48,6 +50,14 @@ protected:
             {-2.5f, +2.5f},
             {+2.5f, +2.5f}
         }; // simple isoceles triangle
+
+        int verts = 20;
+        for (int i = 0; i < verts; i++)
+        {
+            float radius = 5.0f;
+            float a = ((float)i / (float)verts) * 6.28318f;
+            vecModelAsteroids.push_back(make_pair(radius * sinf(a), radius * cosf(a)));
+        }
 
         return true;
     }
@@ -73,11 +83,16 @@ protected:
             player.dy += -cos(player.angle) * 20.0f * fElapsedTime;
         }
 
+        // velocity changes position
         player.x += player.dx * fElapsedTime;
         player.y += player.dy * fElapsedTime;
 
         // keep player in gamespace 
         WrapCoordinates(player.x, player.y, player.x, player.y);
+
+
+        if (m_keys[VK_SPACE].bReleased)
+            vecBullets.push_back({ player.x, player.y, 50.0f * sinf(player.angle), -50.0f * cosf(player.angle) });
 
         // update and draw asteroids
         for (auto& a : vecAsteroids)
@@ -86,13 +101,30 @@ protected:
             a.y += a.dy * fElapsedTime;
             WrapCoordinates(a.x, a.y, a.x, a.y);
 
-            for(int x = 0; x < a.nSize; x++)
-                for (int y = 0; y < a.nSize; y++)
-                    Draw(a.x + x, a.y + y, PIXEL_HALF, FG_RED);
+            DrawWireFrameModel(vecModelAsteroids, a.x, a.y, a.angle);
+        }
+
+        // update and draw bullets
+        for (auto& b : vecBullets)
+        {
+            b.x += b.dx * fElapsedTime;
+            b.y += b.dy * fElapsedTime;
+            WrapCoordinates(b.x, b.y, b.x, b.y);
+
+            Draw(b.x, b.y);
+        }
+
+        // remove off screen bullets
+        if (vecBullets.size() > 0)
+        {
+            auto i = remove_if(vecBullets.begin(), vecBullets.end(),
+                [&](SpaceObject o) {return (o.x < 1 | o.y < 1 || o.x >= ScreenWidth() - 1 || o.y >= ScreenHeight() - 1); });
+            if (i != vecBullets.end())
+                vecBullets.erase(i);
         }
 
         //Draw ship?
-        DrawWireFrameModel(vecModelShip, player.x, player.y, player.angle, 2.0);
+        DrawWireFrameModel(vecModelShip, player.x, player.y, player.angle);
 
         return true;
     }
