@@ -212,7 +212,7 @@ protected:
         }
 
         //Draw ship?
-        DrawWireFrameModel(vecModelShip, player.x, player.y, player.angle);
+        DrawWireFrameModel(vecModelShip, player.x, player.y, player.angle, 2.0);
 
         // draw score
         DrawString(2, 2, L"SCORE: " + to_wstring(nScore));
