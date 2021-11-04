@@ -27,6 +27,8 @@ private:
     vector<SpaceObject> vecAsteroids;
     vector<SpaceObject> vecBullets;
     SpaceObject player;
+    int nScore;
+    bool Dead = false;
 
     vector<pair<float, float>> vecModelShip;
     vector<pair<float, float>> vecModelAsteroids;
@@ -54,11 +56,12 @@ protected:
         int verts = 20;
         for (int i = 0; i < verts; i++)
         {
-            float radius = 5.0f;
+            float radius = (float)rand() / (float)RAND_MAX * 0.4f + 0.8f;
             float a = ((float)i / (float)verts) * 6.28318f;
             vecModelAsteroids.push_back(make_pair(radius * sinf(a), radius * cosf(a)));
         }
 
+        ResetGame();
         return true;
     }
 
@@ -67,9 +70,31 @@ protected:
         return sqrt((x - cx) * (x - cx) + (y - cy) * (y - cy)) < radius;
     }
 
+    void ResetGame()
+    {
+        vecAsteroids.clear();
+        vecBullets.clear();
+
+        vecAsteroids.push_back({ 20.0f, 20.0f, 8.0f, -6.0f, (int)16 , 0.0f });
+        vecAsteroids.push_back({ 100.0f, 20.0f, -5.0f, -6.0f, (int)16 , 0.0f });
+
+        // initialise player position
+        player.x = ScreenWidth() / 2.0f;
+        player.y = ScreenHeight() / 2.0f;
+        player.dx = 0.0f;
+        player.dy = 0.0f;
+        player.angle = 0.0f;
+
+        Dead = false;
+        nScore = 0;
+    }
+
     // called by olcConsoleGameEngine
     virtual bool OnUserUpdate(float fElapsedTime)
     {
+        if (Dead)
+            ResetGame();
+
         // clear screen
         Fill(0, 0, ScreenWidth(), ScreenHeight(), PIXEL_SOLID, 0);
 
@@ -95,6 +120,11 @@ protected:
         // keep player in gamespace 
         WrapCoordinates(player.x, player.y, player.x, player.y);
 
+        // ship collision wit asteroids
+        for (auto& a : vecAsteroids)
+            if (IsPointInsideCircle(a.x, a.y, a.nSize, player.x, player.y))
+                Dead = true;
+
 
         if (m_keys[VK_SPACE].bReleased)
             vecBullets.push_back({ player.x, player.y, 50.0f * sinf(player.angle), -50.0f * cosf(player.angle) });
@@ -104,9 +134,10 @@ protected:
         {
             a.x += a.dx * fElapsedTime;
             a.y += a.dy * fElapsedTime;
+            a.angle += 0.5f * fElapsedTime;
             WrapCoordinates(a.x, a.y, a.x, a.y);
 
-            DrawWireFrameModel(vecModelAsteroids, a.x, a.y, a.angle);
+            DrawWireFrameModel(vecModelAsteroids, a.x, a.y, a.angle, a.nSize, FG_YELLOW);
         }
 
         vector<SpaceObject> newAsteroids;
@@ -137,6 +168,7 @@ protected:
                     }
 
                     a.x = -100;
+                    nScore += 100;
                 }
             }
         }
@@ -161,8 +193,29 @@ protected:
                 vecAsteroids.erase(i);
         }
 
+        if (vecAsteroids.empty())
+        {
+            nScore += 1000;
+
+            // add asteroids 90 degrees both sides of player
+            vecAsteroids.push_back({ 30.0f * sinf(player.angle - 3.14159f / 2.0f),
+                                    30.0f * cosf(player.angle - 3.14159f / 2.0f),
+                                    10.0f * sinf(player.angle),
+                                    10.0f * cosf(player.angle),
+                                    (int)16, 0.0f });
+
+            vecAsteroids.push_back({ 30.0f * sinf(player.angle + 3.14159f / 2.0f),
+                                    30.0f * cosf(player.angle + 3.14159f / 2.0f),
+                                    10.0f * sinf(-player.angle),
+                                    10.0f * cosf(-player.angle),
+                                    (int)16, 0.0f });
+        }
+
         //Draw ship?
-        DrawWireFrameModel(vecModelShip, player.x, player.y, player.angle, 2.0);
+        DrawWireFrameModel(vecModelShip, player.x, player.y, player.angle);
+
+        // draw score
+        DrawString(2, 2, L"SCORE: " + to_wstring(nScore));
 
         return true;
     }
@@ -180,8 +233,8 @@ protected:
         // rotate 
         for (int i = 0; i < verts; i++)
         {
-            vecTransformedCoordinates[i].first = vecModelCoordinates[i].first * cosf(player.angle) - vecModelCoordinates[i].second * sinf(player.angle);
-            vecTransformedCoordinates[i].second = vecModelCoordinates[i].first * sinf(player.angle) + vecModelCoordinates[i].second * cosf(player.angle);
+            vecTransformedCoordinates[i].first = vecModelCoordinates[i].first * cosf(r) - vecModelCoordinates[i].second * sinf(r);
+            vecTransformedCoordinates[i].second = vecModelCoordinates[i].first * sinf(r) + vecModelCoordinates[i].second * cosf(r);
         }
 
         // scale 
@@ -231,7 +284,7 @@ int main()
 {  
     // use olcConsoleGameEngine derived app
     Hotkeys_Asteroids game;
-    game.ConstructConsole(160, 100, 8, 8);
+    game.ConstructConsole(320, 200, 4, 4);
     game.Start();
     return 0;
 }
