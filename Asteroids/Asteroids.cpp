@@ -62,6 +62,11 @@ protected:
         return true;
     }
 
+    bool IsPointInsideCircle(float cx, float cy, float radius, float x, float y)
+    {
+        return sqrt((x - cx) * (x - cx) + (y - cy) * (y - cy)) < radius;
+    }
+
     // called by olcConsoleGameEngine
     virtual bool OnUserUpdate(float fElapsedTime)
     {
@@ -104,6 +109,8 @@ protected:
             DrawWireFrameModel(vecModelAsteroids, a.x, a.y, a.angle);
         }
 
+        vector<SpaceObject> newAsteroids;
+
         // update and draw bullets
         for (auto& b : vecBullets)
         {
@@ -112,7 +119,30 @@ protected:
             WrapCoordinates(b.x, b.y, b.x, b.y);
 
             Draw(b.x, b.y);
+
+            for (auto& a : vecAsteroids)
+            {
+                if (IsPointInsideCircle(a.x, a.y, a.nSize, b.x, b.y))
+                {
+                    // asteroid hit
+                    b.x = -100;
+
+                    if (a.nSize > 4)
+                    {
+                        // create two small asteroids
+                        float angle1 = ((float)rand() / (float)RAND_MAX) * 6.283185f;
+                        float angle2 = ((float)rand() / (float)RAND_MAX) * 6.253185f;
+                        newAsteroids.push_back({ a.x, a.y, 10.0f * sinf(angle1), 10.0f * cosf(angle1), (int)a.nSize >> 1, 0.0f });
+                        newAsteroids.push_back({ a.x, a.y, 10.0f * sinf(angle2), 10.0f * cosf(angle2), (int)a.nSize >> 1, 0.0f });
+                    }
+
+                    a.x = -100;
+                }
+            }
         }
+
+        for (auto a : newAsteroids)
+            vecAsteroids.push_back(a);
 
         // remove off screen bullets
         if (vecBullets.size() > 0)
@@ -123,8 +153,16 @@ protected:
                 vecBullets.erase(i);
         }
 
+        if (vecAsteroids.size() > 0)
+        {
+            auto i = remove_if(vecAsteroids.begin(), vecAsteroids.end(), 
+                [&](SpaceObject o) {return (o.x < 0); });
+            if (i != vecAsteroids.end())
+                vecAsteroids.erase(i);
+        }
+
         //Draw ship?
-        DrawWireFrameModel(vecModelShip, player.x, player.y, player.angle);
+        DrawWireFrameModel(vecModelShip, player.x, player.y, player.angle, 2.0);
 
         return true;
     }
